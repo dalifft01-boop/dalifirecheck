@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日車輛保養與器材清點系統</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .navbar-brand { font-weight: 700; letter-spacing: 0.5px; }
+        .card { box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); border: none; margin-bottom: 1.5rem; }
+        .card-header { font-weight: 600; background-color: #fff; border-bottom: 2px solid #f1f3f5; }
+        .table-responsive { overflow-x: auto; }
+        .vehicle-ref-img { max-height: 250px; object-fit: contain; width: 100%; border-radius: 6px; border: 1px solid #dee2e6; background-color: #fff; }
+        .equip-img-thumb { width: 42px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #ced4da; cursor: pointer; }
+        .equip-fill-img { max-height: 120px; max-width: 100%; object-fit: contain; border-radius: 4px; border: 1px solid #dee2e6; background-color: #fff; }
+        @media print {
+            .no-print { display: none !important; }
+            .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+            body { background-color: #fff !important; }
+            .container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="fa-solid fa-truck-fast me-2 text-warning"></i>每日車輛保養與器材清點系統</a>
+            <div class="d-flex">
+                <button class="btn btn-outline-light btn-sm me-2 no-print" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                    <i class="fa-solid fa-gear me-1"></i>後台管理 / 系統設定
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container my-4">
+        
+        <!-- 頁籤導覽 -->
+        <ul class="nav nav-tabs mb-4 no-print" id="mainTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold" id="form-tab" data-bs-toggle="tab" data-bs-target="#form-pane" type="button" role="tab"><i class="fa-solid fa-pen-to-square me-2"></i>每日填報表單</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="records-tab" data-bs-toggle="tab" data-bs-target="#records-pane" type="button" role="tab"><i class="fa-solid fa-clipboard-list me-2"></i>歷史紀錄與主管簽核</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabContent">
+            
+            <!-- 1. 每日填報表單分頁 -->
+            <div class="tab-pane fade show active" id="form-pane" role="tabpanel">
+                <form id="dailyCheckForm" class="needs-validation" novalidate>
+                    
+                    <!-- 基本資訊卡片 -->
+                    <div class="card">
+                        <div class="card-header bg-primary text-white"><i class="fa-solid fa-info-circle me-2"></i>基本資料填寫</div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="checkDate" class="form-label fw-bold">填寫日期</label>
+                                    <input type="date" class="form-control" id="checkDate" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="selectVehicle" class="form-label fw-bold">選擇車輛</label>
+                                    <select class="form-select" id="selectVehicle" required onchange="onVehicleChange()">
+                                        <option value="" selected disabled>請選擇車輛...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="selectInspector" class="form-label fw-bold">檢查人員</label>
+                                    <select class="form-select" id="selectInspector" required>
+                                        <option value="" selected disabled>請選擇檢查人員...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="alert alert-secondary mb-0 py-2 d-flex justify-content-between align-items-center" id="vehicleInfoDisplay">
+                                        <div><i class="fa-solid fa-car me-2"></i>車牌號碼：<span id="displayPlate" class="fw-bold text-dark">請先選擇車輛</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- 車輛對照總圖 -->
+                            <div class="row mt-3 d-none" id="vehicleImageCardContainer">
+                                <div class="col-12">
+                                    <div class="card border bg-light">
+                                        <div class="card-body py-2">
+                                            <h6 class="fw-bold text-secondary mb-2"><i class="fa-solid fa-image me-1"></i>車輛裝備全景對照圖</h6>
+                                            <div class="text-center">
+                                                <img id="displayVehicleImg" src="" alt="車輛裝備位置圖" class="vehicle-ref-img">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 車輛基礎狀況檢查 (依車型動態切換) -->
+                    <div class="card">
+                        <div class="card-header bg-success text-white"><i class="fa-solid fa-gauge-high me-2"></i>車輛基礎狀況檢查</div>
+                        <div class="card-body">
+                            <div class="row g-3" id="basicChecksContainer">
+                                <!-- 動態生成基礎檢查項目 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 器材裝備清單區 (依艙位分組) -->
+                    <div id="equipmentSectionsContainer">
+                        <!-- 動態依艙位產生卡片 -->
+                    </div>
+
+                    <!-- 提交按鈕 -->
+                    <div class="text-center mb-5 no-print">
+                        <button type="submit" class="btn btn-primary btn-lg px-5 py-3 shadow"><i class="fa-solid fa-paper-plane me-2"></i>送出每日保養與清點紀錄</button>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- 2. 歷史紀錄與主管簽核分頁 -->
+            <div class="tab-pane fade" id="records-pane" role="tabpanel">
+                <div class="card">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <span><i class="fa-solid fa-shield-halved me-2"></i>歷史紀錄與主管簽核管理</span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <button class="btn btn-warning btn-sm fw-bold text-dark" onclick="openUncheckedVehiclesModal()">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i>檢視未檢查車輛列表
+                            </button>
+                            <select id="filterSignStatus" class="form-select form-select-sm" style="width: auto;" onchange="renderRecordsTable()">
+                                <option value="all">全部狀態</option>
+                                <option value="unsigned">僅顯示未簽核</option>
+                                <option value="signed">僅顯示已簽核</option>
+                            </select>
+                            <button class="btn btn-outline-light btn-sm" onclick="exportJSON()"><i class="fa-solid fa-file-arrow-down me-1"></i>匯出JSON</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>日期</th>
+                                        <th>車輛名稱</th>
+                                        <th>車牌號碼</th>
+                                        <th>檢查人員</th>
+                                        <th>簽核狀態</th>
+                                        <th>簽核主管</th>
+                                        <th class="text-end">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recordsTableBody">
+                                    <!-- 動態載入紀錄 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 檢視尚未點選檢查之車輛列表 Modal -->
+    <div class="modal fade" id="uncheckedVehiclesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-clipboard-check me-2"></i>尚未點選檢查之車輛列表</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 align-items-center mb-3">
+                        <div class="col-auto">
+                            <label for="uncheckedQueryDate" class="col-form-label fw-bold">查詢日期：</label>
+                        </div>
+                        <div class="col-auto">
+                            <input type="date" class="form-control" id="uncheckedQueryDate" onchange="renderUncheckedVehiclesList()">
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="setUncheckedDateToToday()"><i class="fa-solid fa-calendar-day me-1"></i>切換至今日</button>
+                        </div>
+                    </div>
+
+                    <div id="uncheckedVehiclesContainer">
+                        <!-- 動態渲染未檢查車輛列表 -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 檢視詳細紀錄 Modal -->
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fa-solid fa-file-lines me-2"></i>保養與清點紀錄詳細內容</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="modalDetailBody">
+                    <!-- 動態載入詳細內容與簽核區 -->
+                </div>
+                <div class="modal-footer no-print justify-content-between">
+                    <button type="button" class="btn btn-outline-danger" id="modalDeleteBtn"><i class="fa-solid fa-trash me-1"></i>刪除此筆紀錄</button>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                        <button type="button" class="btn btn-success" onclick="printCurrentDetail()"><i class="fa-solid fa-print me-1"></i>列印此份表單</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 後台管理 Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="fa-solid fa-gear me-2"></i>系統後台管理 (車輛、器材、人員設定)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    
+                    <ul class="nav nav-pills mb-3" id="settingsTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="set-vehicle-tab" data-bs-toggle="pill" data-bs-target="#set-vehicle-pane" type="button"><i class="fa-solid fa-truck me-1"></i>車輛與器材設定</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="set-staff-tab" data-bs-toggle="pill" data-bs-target="#set-staff-pane" type="button"><i class="fa-solid fa-users me-1"></i>人員管理 (檢查員/幹部)</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="settingsTabContent">
+                        
+                        <div class="tab-pane fade show active" id="set-vehicle-pane" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold text-secondary mb-0">車輛清單管理</h6>
+                                <button class="btn btn-sm btn-primary" onclick="openAddVehicleModal()"><i class="fa-solid fa-plus me-1"></i>新增車輛</button>
+                            </div>
+                            <div class="list-group mb-4" id="adminVehicleList">
+                                <!-- 動態載入車輛列表 -->
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="set-staff-pane" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold text-secondary mb-0">人員資料庫管理</h6>
+                                <button class="btn btn-sm btn-primary" onclick="openAddStaffModal()"><i class="fa-solid fa-user-plus me-1"></i>新增人員</button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-bordered align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>職稱</th>
+                                            <th>編號/號碼</th>
+                                            <th>姓名</th>
+                                            <th>身份類型</th>
+                                            <th class="text-end" style="width: 120px;">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminStaffTableBody">
+                                        <!-- 動態載入人員 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 車輛新增/編輯 Modal -->
+    <div class="modal fade" id="vehicleEditModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="vehicleModalTitle">編輯車輛與器材</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="vehicleEditForm">
+                        <input type="hidden" id="editVehicleIndex" value="-1">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">車輛名稱</label>
+                                <input type="text" class="form-control" id="modalVehName" required placeholder="例如：水箱車、雲梯車">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">車牌號碼</label>
+                                <input type="text" class="form-control" id="modalVehPlate" required placeholder="例如：AA-1111">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">車輛類型 (影響基礎檢查項目)</label>
+                                <select class="form-select" id="modalVehType">
+                                    <option value="water" selected>一般水箱車 (水箱/幫浦)</option>
+                                    <option value="ladder">雲梯車 (雲梯系統)</option>
+                                    <option value="equipment">器材車 (車上器材運作)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- 車輛全景圖片 (選填) -->
+                        <div class="mb-3 p-2 border rounded bg-light">
+                            <label class="form-label fw-bold text-secondary mb-1 small"><i class="fa-solid fa-image me-1"></i>車輛全景/外觀對照圖 (選填)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="modalVehImgUrl" placeholder="請輸入圖片 URL 或點擊上傳..." oninput="document.getElementById('modalVehImgPreview').src = this.value">
+                                <label class="btn btn-outline-secondary">
+                                    <i class="fa-solid fa-upload me-1"></i>上傳圖片
+                                    <input type="file" hidden accept="image/*" onchange="uploadMainVehicleImage(this)">
+                                </label>
+                            </div>
+                            <input type="hidden" id="modalVehImgBase64" value="">
+                            <img id="modalVehImgPreview" src="" alt="車輛全景預覽" class="equip-fill-img d-none mt-2">
+                        </div>
+
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold text-secondary mb-0">配置器材清單</h6>
+                            <button type="button" class="btn btn-sm btn-success" onclick="addEquipmentRow()"><i class="fa-solid fa-plus me-1"></i>新增器材項目</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered align-middle" id="editEquipTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 22%;">器材名稱</th>
+                                        <th style="width: 18%;">組別/類別</th>
+                                        <th style="width: 28%;">擺放位置/艙位</th>
+                                        <th style="width: 18%;">擺放位置照片 (對照圖)</th>
+                                        <th style="width: 100px;">類型</th>
+                                        <th style="width: 60px;" class="text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="editEquipTableBody">
+                                    <!-- 動態填入器材列 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveVehicleData()">儲存車輛與器材設定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 器材單項圖片上傳 Modal -->
+    <div class="modal fade" id="equipImageModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white py-2">
+                    <h6 class="modal-title"><i class="fa-solid fa-image me-1"></i>新增/修改器材位置照片</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">選擇照片檔案上傳</label>
+                        <input type="file" class="form-control form-control-sm" id="singleEquipImgFile" accept="image/*" onchange="previewSingleEquipFile(this)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">或輸入照片網址 (URL)</label>
+                        <input type="text" class="form-control form-control-sm" id="singleEquipImgUrl" placeholder="https://..." oninput="document.getElementById('singleEquipImgPreview').src = this.value">
+                    </div>
+                    <div class="text-center p-2 border bg-light rounded">
+                        <span class="text-muted small d-block mb-1">對照圖預覽</span>
+                        <img id="singleEquipImgPreview" src="" alt="預覽" class="equip-fill-img" style="max-height: 180px;">
+                    </div>
+                </div>
+                <div class="modal-footer py-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearSingleEquipImage()"><i class="fa-solid fa-trash me-1"></i>移除照片</button>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="applySingleEquipImage()">確定儲存圖片</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 人員新增/編輯 Modal -->
+    <div class="modal fade" id="staffEditModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="staffModalTitle">新增/編輯人員</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="staffEditForm">
+                        <input type="hidden" id="editStaffIndex" value="-1">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">職稱</label>
+                            <input type="text" class="form-control" id="modalStaffTitleInput" placeholder="例如：隊員、小隊長、分隊長" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">編號/號碼</label>
+                            <input type="text" class="form-control" id="modalStaffNumber" placeholder="例如：01、A05" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">姓名</label>
+                            <input type="text" class="form-control" id="modalStaffName" placeholder="例如：王大明" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">權限身份</label>
+                            <select class="form-select" id="modalStaffRole">
+                                <option value="inspector">一般檢查人員 (可填報)</option>
+                                <option value="supervisor">幹部/主管 (可進行簽核)</option>
+                                <option value="both">兩者皆可</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="saveStaffData()">儲存人員</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 預設三種車型的範例資料
+        const defaultVehicles = [
+            {
+                name: "救災水箱車",
+                plate: "AA-1111",
+                vehicleType: "water",
+                imageUrl: "",
+                equipment: [
+                    { name: "空氣呼吸器 (SCBA)", group: "個人裝備", position: "駕駛室後座", img: "", isScba: true, scbaCount: 4 },
+                    { name: "備用氣瓶", group: "個人裝備", position: "左側第1艙", img: "", isScba: false },
+                    { name: "救助繩索", group: "搜救器材", position: "左側第2艙", img: "", isScba: false },
+                    { name: "中壓水帶 (2.5吋)", group: "水帶組", position: "右側第1艙", img: "", isScba: false },
+                    { name: "瞄子 (多段式)", group: "水帶組", position: "右側第1艙", img: "", isScba: false },
+                    { name: "機動破壞剪", group: "破壞器材", position: "器材櫃後方", img: "", isScba: false }
+                ]
+            },
+            {
+                name: "直線雲梯車",
+                plate: "CC-3333",
+                vehicleType: "ladder",
+                imageUrl: "",
+                equipment: [
+                    { name: "空氣呼吸器 (SCBA)", group: "個人裝備", position: "器材櫃側艙", img: "", isScba: true, scbaCount: 2 },
+                    { name: "高空救護繩索組", group: "高處救援", position: "隨車箱", img: "", isScba: false },
+                    { name: "全身式安全帶", group: "高處救援", position: "駕駛室後方", img: "", isScba: false }
+                ]
+            },
+            {
+                name: "裝備器材車",
+                plate: "BB-2222",
+                vehicleType: "equipment",
+                imageUrl: "",
+                equipment: [
+                    { name: "空氣呼吸器 (SCBA)", group: "個人裝備", position: "車廂內左側", img: "", isScba: true, scbaCount: 2 },
+                    { name: "引擎式發電機", group: "電力照明", position: "車廂後側", img: "", isScba: false },
+                    { name: "大型照明燈組", group: "電力照明", position: "車廂後側", img: "", isScba: false },
+                    { name: "油壓破壞剪", group: "破壞器材", position: "器材艙右側", img: "", isScba: false }
+                ]
+            }
+        ];
+
+        const defaultStaff = [
+            { title: "分隊長", number: "01", name: "陳冠廷", role: "both" },
+            { title: "小隊長", number: "05", name: "張大明", role: "both" },
+            { title: "隊員", number: "12", name: "李小華", role: "inspector" },
+            { title: "隊員", number: "18", name: "王志豪", role: "inspector" }
+        ];
+
+        let vehicles = JSON.parse(localStorage.getItem('fire_vehicles')) || defaultVehicles;
+        let staffList = JSON.parse(localStorage.getItem('fire_staff')) || defaultStaff;
+        let records = JSON.parse(localStorage.getItem('fire_records')) || [];
+
+        function saveData() {
+            localStorage.setItem('fire_vehicles', JSON.stringify(vehicles));
+            localStorage.setItem('fire_staff', JSON.stringify(staffList));
+            localStorage.setItem('fire_records', JSON.stringify(records));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('checkDate').value = today;
+
+            initSelectors();
+            renderBasicChecks('water');
+            renderRecordsTable();
+            renderAdminVehicles();
+            renderAdminStaff();
+        });
+
+        function initSelectors() {
+            const vehSelect = document.getElementById('selectVehicle');
+            vehSelect.innerHTML = '<option value="" selected disabled>請選擇車輛...</option>';
+            vehicles.forEach((v, idx) => {
+                vehSelect.innerHTML += `<option value="${idx}">${v.name} (${v.plate})</option>`;
+            });
+
+            const inspSelect = document.getElementById('selectInspector');
+            inspSelect.innerHTML = '<option value="" selected disabled>請選擇檢查人員...</option>';
+            staffList.forEach((s) => {
+                inspSelect.innerHTML += `<option value="${s.title} - #${s.number} ${s.name}">[${s.title} - #${s.number}] ${s.name}</option>`;
+            });
+        }
+
+        // 動態渲染基礎檢查項目（依車型：水箱車、雲梯車、器材車）
+        function renderBasicChecks(vType = 'water') {
+            const container = document.getElementById('basicChecksContainer');
+            let items = [
+                { id: 'oilCheck', label: '車輛油量是否大於 1/2', desc: '油量錶指針需高於 1/2 位置' }
+            ];
+
+            if (vType === 'water') {
+                items.push({ id: 'item2Check', label: '水箱是否滿水', desc: '水箱水位需達 90% 以上狀態' });
+                items.push({ id: 'item3Check', label: '幫浦性能測試', desc: '試運轉無異常異音且壓力正常' });
+            } else if (vType === 'ladder') {
+                items.push({ id: 'item2Check', label: '雲梯系統是否正常', desc: '支撐腳伸展、旋轉盤與梯臂油壓正常' });                
+                items.push({ id: 'item3Check', label: '行車紀錄紙更換', desc: '確認行車紀錄紙已更換' });
+            } else if (vType === 'equipment') {
+                items.push({ id: 'item2Check', label: '車上器材是否運作正常', desc: '隨車裝備測試運轉正常' });
+            }
+
+            container.innerHTML = '';
+            items.forEach(item => {
+                container.innerHTML += `
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-light h-100">
+                            <label class="form-label fw-bold text-dark mb-1"><i class="fa-solid fa-check-circle text-success me-1"></i>${item.label}</label>
+                            <div class="text-muted small mb-2">${item.desc}</div>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="${item.id}" id="${item.id}_normal" value="正常" checked>
+                                <label class="btn btn-outline-success btn-sm" for="${item.id}_normal">正常</label>
+                                
+                                <input type="radio" class="btn-check" name="${item.id}" id="${item.id}_abnormal" value="異常">
+                                <label class="btn btn-outline-danger btn-sm" for="${item.id}_abnormal">異常</label>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function onVehicleChange() {
+            const idx = document.getElementById('selectVehicle').value;
+            const container = document.getElementById('equipmentSectionsContainer');
+            const plateDisplay = document.getElementById('displayPlate');
+            const imgCardContainer = document.getElementById('vehicleImageCardContainer');
+            const displayImg = document.getElementById('displayVehicleImg');
+
+            if (idx === "") {
+                plateDisplay.textContent = "請先選擇車輛";
+                container.innerHTML = "";
+                imgCardContainer.classList.add('d-none');
+                renderBasicChecks('water');
+                return;
+            }
+
+            const vehicle = vehicles[idx];
+            plateDisplay.textContent = vehicle.plate;
+
+            renderBasicChecks(vehicle.vehicleType || 'water');
+
+            if (vehicle.imageUrl && vehicle.imageUrl.trim() !== "") {
+                displayImg.src = vehicle.imageUrl;
+                imgCardContainer.classList.remove('d-none');
+            } else {
+                imgCardContainer.classList.add('d-none');
+            }
+
+            let grouped = {};
+            vehicle.equipment.forEach(eq => {
+                let pos = eq.position || "其他擺放區";
+                if (!grouped[pos]) grouped[pos] = [];
+                grouped[pos].push(eq);
+            });
+
+            container.innerHTML = '';
+            for (let pos in grouped) {
+                let cardHtml = `
+                    <div class="card">
+                        <div class="card-header bg-secondary text-white"><i class="fa-solid fa-box-archive me-2"></i>擺放位置 / 艙位：${pos}</div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                `;
+
+                grouped[pos].forEach((eq) => {
+                    let imgHtml = eq.img ? `<div class="mb-2"><img src="${eq.img}" class="equip-fill-img" alt="${eq.name}對照圖"></div>` : '';
+
+                    if (eq.isScba) {
+                        let count = eq.scbaCount || 2;
+                        for (let i = 1; i <= count; i++) {
+                            cardHtml += `
+                                <div class="col-12 border-bottom pb-3 mb-2 scba-item-block" data-eq-name="${eq.name} #${i}" data-eq-group="${eq.group || '個人裝備'}" data-eq-pos="${pos}">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="fw-bold text-primary"><i class="fa-solid fa-lungs me-1"></i>${eq.name} #${i}</span>
+                                        <span class="badge bg-info text-dark">群組: ${eq.group || '個人裝備'}</span>
+                                    </div>
+                                    ${imgHtml}
+                                    <div class="row g-2 align-items-center">
+                                        <div class="col-md-3">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">氣量</span>
+                                                <input type="number" class="form-control scba-bar" placeholder="例如: 300" required>
+                                                <span class="input-group-text">bar</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">電量</span>
+                                                <input type="number" class="form-control scba-bat" placeholder="例如: 100" required>
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm scba-status">
+                                                <option value="正常" selected>正常</option>
+                                                <option value="異常">異常</option>
+                                                <option value="缺少">缺少</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <input type="text" class="form-control form-control-sm scba-note" placeholder="備註說明...">
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        cardHtml += `
+                            <div class="col-md-6 border-bottom pb-3 mb-2 normal-item-block" data-eq-name="${eq.name}" data-eq-group="${eq.group || '一般裝備'}" data-eq-pos="${pos}">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold">${eq.name} <small class="text-muted">(${eq.group || '一般裝備'})</small></span>
+                                </div>
+                                ${imgHtml}
+                                <div class="row g-2">
+                                    <div class="col-md-5">
+                                        <select class="form-select form-select-sm normal-status">
+                                            <option value="正常" selected>正常</option>
+                                            <option value="異常">異常</option>
+                                            <option value="缺少">缺少</option>
+                                            <option value="無需點檢">無需點檢</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-7">
+                                        <input type="text" class="form-control form-control-sm normal-note" placeholder="備註說明...">
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                cardHtml += `</div></div></div>`;
+                container.innerHTML += cardHtml;
+            }
+        }
+
+        document.getElementById('dailyCheckForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const vehIdx = document.getElementById('selectVehicle').value;
+            const inspector = document.getElementById('selectInspector').value;
+            const date = document.getElementById('checkDate').value;
+
+            if (vehIdx === "" || !inspector || !date) {
+                alert('請完整填寫日期、車輛與檢查人員！');
+                return;
+            }
+
+            const vehicle = vehicles[vehIdx];
+            const vType = vehicle.vehicleType || 'water';
+
+            let basicChecksList = [];
+            basicChecksList.push({
+                label: '車輛油量(>1/2)',
+                val: document.querySelector('input[name="oilCheck"]:checked').value
+            });
+
+            if (vType === 'water') {
+                basicChecksList.push({ label: '水箱滿水', val: document.querySelector('input[name="item2Check"]:checked').value });
+                basicChecksList.push({ label: '幫浦性能測試', val: document.querySelector('input[name="item3Check"]:checked').value });
+            } else if (vType === 'ladder') {
+                basicChecksList.push({ label: '雲梯系統正常', val: document.querySelector('input[name="item2Check"]:checked').value });                
+                basicChecksList.push({ label: '行車紀錄紙更換', val: document.querySelector('input[name="item3Check"]:checked').value });
+            } else if (vType === 'equipment') {
+                basicChecksList.push({ label: '車上器材運作正常', val: document.querySelector('input[name="item2Check"]:checked').value });
+            }
+
+            let itemsDetail = [];
+            
+            document.querySelectorAll('.scba-item-block').forEach(el => {
+                itemsDetail.push({
+                    name: el.getAttribute('data-eq-name'),
+                    group: el.getAttribute('data-eq-group'),
+                    position: el.getAttribute('data-eq-pos'),
+                    isScba: true,
+                    bar: el.querySelector('.scba-bar').value,
+                    battery: el.querySelector('.scba-bat').value,
+                    status: el.querySelector('.scba-status').value,
+                    note: el.querySelector('.scba-note').value
+                });
+            });
+
+            document.querySelectorAll('.normal-item-block').forEach(el => {
+                itemsDetail.push({
+                    name: el.getAttribute('data-eq-name'),
+                    group: el.getAttribute('data-eq-group'),
+                    position: el.getAttribute('data-eq-pos'),
+                    isScba: false,
+                    status: el.querySelector('.normal-status').value,
+                    note: el.querySelector('.normal-note').value
+                });
+            });
+
+            const newRecord = {
+                id: Date.now(),
+                date: date,
+                vehicleName: vehicle.name,
+                vehiclePlate: vehicle.plate,
+                vehicleType: vType,
+                inspector: inspector,
+                basicDataList: basicChecksList,
+                items: itemsDetail,
+                signed: false,
+                supervisor: "",
+                signTime: ""
+            };
+
+            records.unshift(newRecord);
+            saveData();
+            renderRecordsTable();
+
+            alert('每日保養與清點表單已成功送出！');
+            this.reset();
+            document.getElementById('checkDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('vehicleInfoDisplay').innerHTML = '<div><i class="fa-solid fa-car me-2"></i>車牌號碼：<span id="displayPlate" class="fw-bold text-dark">請先選擇車輛</span></div>';
+            document.getElementById('vehicleImageCardContainer').classList.add('d-none');
+            document.getElementById('equipmentSectionsContainer').innerHTML = '';
+            renderBasicChecks('water');
+
+            document.getElementById('records-tab').click();
+        });
+
+        function renderRecordsTable() {
+            const tbody = document.getElementById('recordsTableBody');
+            const filter = document.getElementById('filterSignStatus').value;
+            tbody.innerHTML = '';
+
+            let filtered = records.filter(r => {
+                if (filter === 'unsigned') return !r.signed;
+                if (filter === 'signed') return r.signed;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">目前尚無相關紀錄</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(rec => {
+                let signBadge = rec.signed 
+                    ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>已簽核</span>` 
+                    : `<span class="badge bg-danger text-white"><i class="fa-solid fa-triangle-exclamation me-1"></i>未簽核</span>`;
+                
+                let supText = rec.signed ? `${rec.supervisor} <br><small class="text-muted">${rec.signTime}</small>` : `<span class="text-muted">-</span>`;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${rec.date}</td>
+                        <td class="fw-bold">${rec.vehicleName}</td>
+                        <td><span class="badge bg-secondary">${rec.vehiclePlate}</span></td>
+                        <td>${rec.inspector}</td>
+                        <td>${signBadge}</td>
+                        <td>${supText}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="viewDetail(${rec.id})"><i class="fa-solid fa-eye"></i> 檢視/簽核</button>
+                            <button class="btn btn-sm btn-outline-dark me-1" onclick="printRecord(${rec.id})"><i class="fa-solid fa-print"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${rec.id})"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // ================= 尚未檢查車輛列表功能 =================
+
+        function openUncheckedVehiclesModal() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('uncheckedQueryDate').value = today;
+            renderUncheckedVehiclesList();
+            new bootstrap.Modal(document.getElementById('uncheckedVehiclesModal')).show();
+        }
+
+        function setUncheckedDateToToday() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('uncheckedQueryDate').value = today;
+            renderUncheckedVehiclesList();
+        }
+
+        function renderUncheckedVehiclesList() {
+            const queryDate = document.getElementById('uncheckedQueryDate').value;
+            const container = document.getElementById('uncheckedVehiclesContainer');
+
+            if (!queryDate) {
+                container.innerHTML = `<div class="alert alert-warning">請選擇查詢日期</div>`;
+                return;
+            }
+
+            // 取得指定日期已檢查的車牌號碼或車名集合
+            const checkedVehiclePlates = new Set(
+                records.filter(r => r.date === queryDate).map(r => r.vehiclePlate)
+            );
+
+            // 過濾出尚未檢查的車輛
+            const uncheckedVehicles = vehicles.filter(v => !checkedVehiclePlates.has(v.plate));
+
+            if (uncheckedVehicles.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-success d-flex align-items-center mb-0">
+                        <i class="fa-solid fa-circle-check fa-2x me-3"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">棒極了！全數車輛皆已完成檢查</h6>
+                            <small class="mb-0">日期 ${queryDate} 的所有系統內車輛皆已有填報紀錄。</small>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="alert alert-danger py-2 mb-3">
+                    <i class="fa-solid fa-bell me-2"></i>日期：<strong>${queryDate}</strong> 共有 <strong>${uncheckedVehicles.length}</strong> 輛車尚未完成保養與清點。
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>車輛名稱</th>
+                                <th>車牌號碼</th>
+                                <th>車輛類型</th>
+                                <th>器材總數</th>
+                                <th class="text-center">狀態</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            uncheckedVehicles.forEach((v, index) => {
+                let typeText = '一般水箱車';
+                let badgeBg = 'bg-primary';
+                if (v.vehicleType === 'ladder') {
+                    typeText = '雲梯車';
+                    badgeBg = 'bg-warning text-dark';
+                } else if (v.vehicleType === 'equipment') {
+                    typeText = '器材車';
+                    badgeBg = 'bg-info text-dark';
+                }
+
+                html += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td class="fw-bold text-dark">${v.name}</td>
+                        <td><span class="badge bg-secondary">${v.plate}</span></td>
+                        <td><span class="badge ${badgeBg}">${typeText}</span></td>
+                        <td>${v.equipment ? v.equipment.length : 0} 項</td>
+                        <td class="text-center"><span class="badge bg-danger"><i class="fa-solid fa-xmark me-1"></i>尚未點檢</span></td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        }
+
+        function deleteRecord(id) {
+            if (confirm('確定要永久刪除這筆保養與清點紀錄嗎？此動作無法復原。')) {
+                records = records.filter(r => r.id !== id);
+                saveData();
+                renderRecordsTable();
+                const detailModalEl = document.getElementById('detailModal');
+                const modalInstance = bootstrap.Modal.getInstance(detailModalEl);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            }
+        }
+
+        function viewDetail(id) {
+            const rec = records.find(r => r.id === id);
+            if (!rec) return;
+
+            document.getElementById('modalDeleteBtn').onclick = () => deleteRecord(rec.id);
+
+            let basicHtml = `<div class="row g-2 mb-3">`;
+            if (rec.basicDataList && rec.basicDataList.length > 0) {
+                rec.basicDataList.forEach(b => {
+                    basicHtml += `<div class="col-md-4"><span class="fw-bold">${b.label}：</span> <span class="badge bg-${b.val === '正常' ? 'success' : 'danger'}">${b.val}</span></div>`;
+                });
+            } else if (rec.basicData) {
+                basicHtml += `<div class="col-md-4"><span class="fw-bold">車輛油量(>1/2)：</span> <span class="badge bg-${rec.basicData.oil === '正常' ? 'success' : 'danger'}">${rec.basicData.oil}</span></div>`;
+                basicHtml += `<div class="col-md-4"><span class="fw-bold">水箱滿水：</span> <span class="badge bg-${rec.basicData.water === '正常' ? 'success' : 'danger'}">${rec.basicData.water}</span></div>`;
+                basicHtml += `<div class="col-md-4"><span class="fw-bold">幫浦性能：</span> <span class="badge bg-${rec.basicData.pump === '正常' ? 'success' : 'danger'}">${rec.basicData.pump}</span></div>`;
+            }
+            basicHtml += `</div>`;
+
+            let itemsHtml = `<div class="table-responsive"><table class="table table-sm table-bordered align-middle">
+                <thead class="table-light">
+                    <tr><th>艙位位置</th><th>器材名稱</th><th>組別</th><th>狀態 / 氣量 / 電量</th><th>備註</th></tr>
+                </thead>
+                <tbody>`;
+
+            rec.items.forEach(it => {
+                let statusBadge = `<span class="badge bg-${it.status === '正常' ? 'success' : (it.status === '異常' ? 'danger' : 'warning')}">${it.status}</span>`;
+                let detailExtra = it.isScba ? `<br><small class="text-primary">氣量: <b>${it.bar} bar</b> | 電量: <b>${it.battery}%</b></small>` : '';
+                itemsHtml += `
+                    <tr>
+                        <td><span class="badge bg-secondary">${it.position}</span></td>
+                        <td class="fw-bold">${it.name}</td>
+                        <td>${it.group}</td>
+                        <td>${statusBadge} ${detailExtra}</td>
+                        <td>${it.note || '-'}</td>
+                    </tr>
+                `;
+            });
+            itemsHtml += `</tbody></table></div>`;
+
+            let supervisorOptions = `<option value="" selected disabled>請選擇簽核主管...</option>`;
+            staffList.filter(s => s.role === 'supervisor' || s.role === 'both').forEach(s => {
+                let nameStr = `[${s.title} - #${s.number}] ${s.name}`;
+                supervisorOptions += `<option value="${nameStr}">${nameStr}</option>`;
+            });
+
+            let signAreaHtml = ``;
+            if (rec.signed) {
+                signAreaHtml = `
+                    <div class="alert alert-success d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fa-solid fa-circle-check fa-lg me-2"></i><strong>已完成主管簽核</strong><br>
+                            簽核主管：${rec.supervisor} (時間：${rec.signTime})
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm no-print" onclick="revokeSign(${rec.id})">撤銷簽核</button>
+                    </div>
+                `;
+            } else {
+                signAreaHtml = `
+                    <div class="card bg-light border-warning no-print">
+                        <div class="card-body">
+                            <h6 class="fw-bold text-danger mb-2"><i class="fa-solid fa-triangle-exclamation me-1"></i>主管審核簽認區 (尚未簽核)</h6>
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-6">
+                                    <select class="form-select" id="modalSignSupervisor">
+                                        ${supervisorOptions}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <button class="btn btn-success w-100" onclick="confirmSign(${rec.id})"><i class="fa-solid fa-signature me-1"></i>確認簽核通過</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('modalDetailBody').innerHTML = `
+                <div class="border p-3 rounded bg-white">
+                    <div class="row mb-3 border-bottom pb-2">
+                        <div class="col-md-3"><strong>填報日期：</strong>${rec.date}</div>
+                        <div class="col-md-3"><strong>車輛名稱：</strong>${rec.vehicleName}</div>
+                        <div class="col-md-3"><strong>車牌號碼：</strong>${rec.vehiclePlate}</div>
+                        <div class="col-md-3"><strong>檢查人員：</strong>${rec.inspector}</div>
+                    </div>
+                    <h6 class="fw-bold text-secondary">車輛基礎檢查</h6>
+                    ${basicHtml}
+                    <h6 class="fw-bold text-secondary mt-3">裝備器材清點明細</h6>
+                    ${itemsHtml}
+                    <div class="mt-4">
+                        ${signAreaHtml}
+                    </div>
+                </div>
+            `;
+
+            new bootstrap.Modal(document.getElementById('detailModal')).show();
+        }
+
+        function confirmSign(id) {
+            const selectVal = document.getElementById('modalSignSupervisor').value;
+            if (!selectVal) {
+                alert('請先選擇簽核主管！');
+                return;
+            }
+
+            const rec = records.find(r => r.id === id);
+            if (rec) {
+                rec.signed = true;
+                rec.supervisor = selectVal;
+                const now = new Date();
+                rec.signTime = now.toISOString().replace('T', ' ').substring(0, 16);
+                saveData();
+                renderRecordsTable();
+                viewDetail(id);
+                alert('已成功完成簽核！');
+            }
+        }
+
+        function revokeSign(id) {
+            if (confirm('確定要撤銷此筆簽核狀態嗎？')) {
+                const rec = records.find(r => r.id === id);
+                if (rec) {
+                    rec.signed = false;
+                    rec.supervisor = "";
+                    rec.signTime = "";
+                    saveData();
+                    renderRecordsTable();
+                    viewDetail(id);
+                }
+            }
+        }
+
+        function printCurrentDetail() { window.print(); }
+        function printRecord(id) { viewDetail(id); setTimeout(() => { window.print(); }, 300); }
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `vehicle_check_records_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        // ================= 後台管理功能 =================
+
+        function renderAdminVehicles() {
+            const listContainer = document.getElementById('adminVehicleList');
+            listContainer.innerHTML = '';
+
+            vehicles.forEach((v, idx) => {
+                let typeText = '一般水箱車';
+                let badgeBg = 'bg-primary';
+                if (v.vehicleType === 'ladder') {
+                    typeText = '雲梯車';
+                    badgeBg = 'bg-warning text-dark';
+                } else if (v.vehicleType === 'equipment') {
+                    typeText = '器材車';
+                    badgeBg = 'bg-info text-dark';
+                }
+
+                listContainer.innerHTML += `
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 fw-bold text-primary">${v.name} <span class="badge bg-secondary ms-2">${v.plate}</span> <span class="badge ${badgeBg} ms-1">${typeText}</span></h6>
+                            <small class="text-muted">配置器材數：${v.equipment.length} 項</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditVehicleModal(${idx})"><i class="fa-solid fa-pen"></i> 編輯車型與器材</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle(${idx})"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openAddVehicleModal() {
+            document.getElementById('editVehicleIndex').value = -1;
+            document.getElementById('vehicleModalTitle').textContent = "新增車輛";
+            document.getElementById('modalVehName').value = "";
+            document.getElementById('modalVehPlate').value = "";
+            document.getElementById('modalVehType').value = "water";
+            document.getElementById('modalVehImgUrl').value = "";
+            document.getElementById('modalVehImgBase64').value = "";
+            
+            const preview = document.getElementById('modalVehImgPreview');
+            preview.src = "";
+            preview.classList.add('d-none');
+
+            document.getElementById('editEquipTableBody').innerHTML = "";
+            addEquipmentRow();
+            new bootstrap.Modal(document.getElementById('vehicleEditModal')).show();
+        }
+
+        function openEditVehicleModal(idx) {
+            const v = vehicles[idx];
+            document.getElementById('editVehicleIndex').value = idx;
+            document.getElementById('vehicleModalTitle').textContent = `編輯車輛與器材：${v.name}`;
+            document.getElementById('modalVehName').value = v.name;
+            document.getElementById('modalVehPlate').value = v.plate;
+            document.getElementById('modalVehType').value = v.vehicleType || 'water';
+
+            const preview = document.getElementById('modalVehImgPreview');
+            if (v.imageUrl && v.imageUrl.trim() !== "") {
+                document.getElementById('modalVehImgUrl').value = v.imageUrl.startsWith('data:') ? '' : v.imageUrl;
+                document.getElementById('modalVehImgBase64').value = v.imageUrl;
+                preview.src = v.imageUrl;
+                preview.classList.remove('d-none');
+            } else {
+                document.getElementById('modalVehImgUrl').value = "";
+                document.getElementById('modalVehImgBase64').value = "";
+                preview.src = "";
+                preview.classList.add('d-none');
+            }
+
+            const tbody = document.getElementById('editEquipTableBody');
+            tbody.innerHTML = "";
+            v.equipment.forEach(eq => {
+                addEquipmentRow(eq);
+            });
+
+            new bootstrap.Modal(document.getElementById('vehicleEditModal')).show();
+        }
+
+        function uploadMainVehicleImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Str = e.target.result;
+                    document.getElementById('modalVehImgBase64').value = base64Str;
+                    document.getElementById('modalVehImgUrl').value = "";
+                    const preview = document.getElementById('modalVehImgPreview');
+                    preview.src = base64Str;
+                    preview.classList.remove('d-none');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function addEquipmentRow(eq = null) {
+            const tbody = document.getElementById('editEquipTableBody');
+            const row = document.createElement('tr');
+            const imgVal = eq ? (eq.img || '') : '';
+
+            let imgPreviewBtn = imgVal 
+                ? `<div class="d-flex align-items-center gap-1"><img src="${imgVal}" class="equip-img-thumb eq-img-btn" onclick="openSingleEquipImageModal(this)"><input type="hidden" class="eq-img-data" value="${imgVal}"></div>`
+                : `<button type="button" class="btn btn-sm btn-outline-secondary w-100 py-1 eq-img-btn" onclick="openSingleEquipImageModal(this)"><i class="fa-solid fa-camera me-1"></i>上傳照片</button><input type="hidden" class="eq-img-data" value="">`;
+
+            row.innerHTML = `
+                <td><input type="text" class="form-control form-control-sm eq-name" value="${eq ? eq.name : ''}" required placeholder="器材名稱"></td>
+                <td><input type="text" class="form-control form-control-sm eq-group" value="${eq ? (eq.group || '') : ''}" placeholder="例如：水帶組"></td>
+                <td><input type="text" class="form-control form-control-sm eq-pos" value="${eq ? (eq.position || '') : ''}" placeholder="例如：左側第1艙"></td>
+                <td class="text-center align-middle">${imgPreviewBtn}</td>
+                <td>
+                    <select class="form-select form-select-sm eq-isscba" onchange="toggleScbaCountInput(this)">
+                        <option value="false" ${eq && eq.isScba ? '' : 'selected'}>一般器材</option>
+                        <option value="true" ${eq && eq.isScba ? 'selected' : ''}>SCBA (多套)</option>
+                    </select>
+                    <div class="mt-1 scba-count-wrap ${eq && eq.isScba ? '' : 'd-none'}">
+                        <input type="number" class="form-control form-control-sm eq-scbacount" value="${eq && eq.scbaCount ? eq.scbaCount : 4}" min="1" placeholder="套數">
+                    </div>
+                </td>
+                <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()"><i class="fa-solid fa-trash"></i></button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        let activeImgTargetElement = null;
+        function openSingleEquipImageModal(btnEl) {
+            activeImgTargetElement = btnEl.closest('td');
+            const hiddenVal = activeImgTargetElement.querySelector('.eq-img-data').value;
+            
+            document.getElementById('singleEquipImgFile').value = '';
+            document.getElementById('singleEquipImgUrl').value = hiddenVal.startsWith('data:') ? '' : hiddenVal;
+            
+            const preview = document.getElementById('singleEquipImgPreview');
+            preview.src = hiddenVal || '';
+            
+            new bootstrap.Modal(document.getElementById('equipImageModal')).show();
+        }
+
+        function previewSingleEquipFile(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('singleEquipImgPreview').src = e.target.result;
+                    document.getElementById('singleEquipImgUrl').value = '';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function applySingleEquipImage() {
+            if (!activeImgTargetElement) return;
+
+            let finalSrc = document.getElementById('singleEquipImgPreview').src;
+            if (finalSrc.endsWith('/index.html') || finalSrc === window.location.href) {
+                finalSrc = '';
+            }
+
+            const hiddenInput = activeImgTargetElement.querySelector('.eq-img-data');
+            hiddenInput.value = finalSrc;
+
+            if (finalSrc && finalSrc !== '') {
+                activeImgTargetElement.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-center gap-1">
+                        <img src="${finalSrc}" class="equip-img-thumb eq-img-btn" onclick="openSingleEquipImageModal(this)">
+                        <input type="hidden" class="eq-img-data" value="${finalSrc}">
+                    </div>
+                `;
+            } else {
+                activeImgTargetElement.innerHTML = `
+                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-1 eq-img-btn" onclick="openSingleEquipImageModal(this)"><i class="fa-solid fa-camera me-1"></i>上傳照片</button>
+                    <input type="hidden" class="eq-img-data" value="">
+                `;
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('equipImageModal')).hide();
+        }
+
+        function clearSingleEquipImage() {
+            document.getElementById('singleEquipImgPreview').src = '';
+            document.getElementById('singleEquipImgUrl').value = '';
+            document.getElementById('singleEquipImgFile').value = '';
+            applySingleEquipImage();
+        }
+
+        function toggleScbaCountInput(selectEl) {
+            const wrap = selectEl.nextElementSibling;
+            if (selectEl.value === 'true') {
+                wrap.classList.remove('d-none');
+            } else {
+                wrap.classList.add('d-none');
+            }
+        }
+
+        function saveVehicleData() {
+            const idx = parseInt(document.getElementById('editVehicleIndex').value);
+            const name = document.getElementById('modalVehName').value.trim();
+            const plate = document.getElementById('modalVehPlate').value.trim();
+            const vehicleType = document.getElementById('modalVehType').value;
+
+            if (!name || !plate) {
+                alert('請填寫車輛名稱與車牌號碼！');
+                return;
+            }
+
+            let imgUrl = document.getElementById('modalVehImgBase64').value;
+            if (!imgUrl || imgUrl === "") {
+                imgUrl = document.getElementById('modalVehImgUrl').value.trim();
+            }
+
+            let equipList = [];
+            let rows = document.querySelectorAll('#editEquipTableBody tr');
+            rows.forEach(r => {
+                let eqName = r.querySelector('.eq-name').value.trim();
+                let eqGroup = r.querySelector('.eq-group').value.trim();
+                let eqPos = r.querySelector('.eq-pos').value.trim();
+                let eqImg = r.querySelector('.eq-img-data') ? r.querySelector('.eq-img-data').value : '';
+                let isScba = r.querySelector('.eq-isscba').value === 'true';
+                let scbaCount = isScba ? parseInt(r.querySelector('.eq-scbacount').value) || 4 : 0;
+
+                if (eqName) {
+                    equipList.push({
+                        name: eqName,
+                        group: eqGroup || '未分類',
+                        position: eqPos || '預設艙位',
+                        img: eqImg,
+                        isScba: isScba,
+                        scbaCount: scbaCount
+                    });
+                }
+            });
+
+            const vehicleObj = { name: name, plate: plate, vehicleType: vehicleType, imageUrl: imgUrl, equipment: equipList };
+
+            if (idx === -1) {
+                vehicles.push(vehicleObj);
+            } else {
+                vehicles[idx] = vehicleObj;
+            }
+
+            saveData();
+            initSelectors();
+            renderAdminVehicles();
+
+            bootstrap.Modal.getInstance(document.getElementById('vehicleEditModal')).hide();
+            alert('車輛設定已成功儲存！');
+        }
+
+        function deleteVehicle(idx) {
+            if (confirm(`確定要刪除車輛「${vehicles[idx].name}」嗎？`)) {
+                vehicles.splice(idx, 1);
+                saveData();
+                initSelectors();
+                renderAdminVehicles();
+            }
+        }
+
+        function renderAdminStaff() {
+            const tbody = document.getElementById('adminStaffTableBody');
+            tbody.innerHTML = "";
+
+            staffList.forEach((s, idx) => {
+                let roleBadge = s.role === 'supervisor' ? '<span class="badge bg-warning text-dark">幹部/主管</span>' : (s.role === 'inspector' ? '<span class="badge bg-info text-dark">檢查人員</span>' : '<span class="badge bg-success">皆可 (檢查/主管)</span>');
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${s.title}</td>
+                        <td><span class="badge bg-secondary">#${s.number}</span></td>
+                        <td class="fw-bold">${s.name}</td>
+                        <td>${roleBadge}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditStaffModal(${idx})"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteStaff(${idx})"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function openAddStaffModal() {
+            document.getElementById('editStaffIndex').value = -1;
+            document.getElementById('staffModalTitle').textContent = "新增人員";
+            document.getElementById('modalStaffTitleInput').value = "";
+            document.getElementById('modalStaffNumber').value = "";
+            document.getElementById('modalStaffName').value = "";
+            document.getElementById('modalStaffRole').value = "inspector";
+            new bootstrap.Modal(document.getElementById('staffEditModal')).show();
+        }
+
+        function openEditStaffModal(idx) {
+            const s = staffList[idx];
+            document.getElementById('editStaffIndex').value = idx;
+            document.getElementById('staffModalTitle').textContent = `編輯人員：${s.name}`;
+            document.getElementById('modalStaffTitleInput').value = s.title;
+            document.getElementById('modalStaffNumber').value = s.number;
+            document.getElementById('modalStaffName').value = s.name;
+            document.getElementById('modalStaffRole').value = s.role;
+            new bootstrap.Modal(document.getElementById('staffEditModal')).show();
+        }
+
+        function saveStaffData() {
+            const idx = parseInt(document.getElementById('editStaffIndex').value);
+            const title = document.getElementById('modalStaffTitleInput').value.trim();
+            const number = document.getElementById('modalStaffNumber').value.trim();
+            const name = document.getElementById('modalStaffName').value.trim();
+            const role = document.getElementById('modalStaffRole').value;
+
+            if (!title || !number || !name) {
+                alert('請完整填寫職稱、編號與姓名！');
+                return;
+            }
+
+            const staffObj = { title, number, name, role };
+            if (idx === -1) {
+                staffList.push(staffObj);
+            } else {
+                staffList[idx] = staffObj;
+            }
+
+            saveData();
+            initSelectors();
+            renderAdminStaff();
+
+            bootstrap.Modal.getInstance(document.getElementById('staffEditModal')).hide();
+            alert('人員資料已儲存！');
+        }
+
+        function deleteStaff(idx) {
+            if (confirm(`確定要刪除人員「${staffList[idx].name}」嗎？`)) {
+                staffList.splice(idx, 1);
+                saveData();
+                initSelectors();
+                renderAdminStaff();
+            }
+        }
+    </script>
+</body>
+</html>

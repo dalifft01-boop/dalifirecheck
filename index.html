@@ -1086,8 +1086,19 @@
                 rec.signTime = now.toISOString().replace('T', ' ').substring(0, 16);
                 saveData();
                 renderRecordsTable();
-                viewDetail(id);
+                
                 alert('已成功完成簽核！');
+
+                // ⭐⭐⭐ 【關鍵修復】簽核完成後，強制關閉詳細紀錄 Modal 並清除所有反黑遮罩 ⭐⭐⭐
+                const detailModalEl = document.getElementById('detailModal');
+                const modalInstance = bootstrap.Modal.getInstance(detailModalEl);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
             }
         }
 
@@ -1100,11 +1111,39 @@
                     rec.signTime = "";
                     saveData();
                     renderRecordsTable();
-                    viewDetail(id);
+                    
+                    // 撤銷後也強制關閉 Modal 並清除遮罩，避免反黑
+                    const detailModalEl = document.getElementById('detailModal');
+                    const modalInstance = bootstrap.Modal.getInstance(detailModalEl);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.overflow = '';
+                    document.body.style.paddingRight = '';
                 }
             }
         }
 
+        function deleteRecord(id) {
+            if (confirm('確定要永久刪除這筆保養與清點紀錄嗎？此動作無法復原。')) {
+                records = records.filter(r => r.id !== id);
+                saveData();
+                renderRecordsTable();
+                
+                // 刪除後強制關閉 Modal 並清除遮罩
+                const detailModalEl = document.getElementById('detailModal');
+                const modalInstance = bootstrap.Modal.getInstance(detailModalEl);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            }
+        }
         function printCurrentDetail() { window.print(); }
         function printRecord(id) { viewDetail(id); setTimeout(() => { window.print(); }, 300); }
         function exportJSON() {

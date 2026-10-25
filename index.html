@@ -545,12 +545,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadDataFromCloud();
 });
 
-        function saveData() {
-            localStorage.setItem('fire_vehicles', JSON.stringify(vehicles));
-            localStorage.setItem('fire_staff', JSON.stringify(staffList));
-            localStorage.setItem('fire_records', JSON.stringify(records));
-        }
-
+        
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('checkDate').value = today;

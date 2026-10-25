@@ -478,6 +478,13 @@
                 ]
             }
         ];
+        // ⭐ 全域監聽：確保任何 Bootstrap Modal 關閉時，絕對會清除反黑遮罩與解鎖畫面
+document.addEventListener('hidden.bs.modal', function (event) {
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+});
 
         const defaultStaff = [
             { title: "分隊長", number: "01", name: "陳冠廷", role: "both" },

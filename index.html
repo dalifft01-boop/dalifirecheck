@@ -724,7 +724,7 @@
             }
         }
 
-        document.getElementById('dailyCheckForm').addEventListener('submit', function(e) {
+        document.getElementById('dailyCheckForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const vehIdx = document.getElementById('selectVehicle').value;
             const inspector = document.getElementById('selectInspector').value;
@@ -795,25 +795,38 @@
             };
 
             records.unshift(newRecord);
-            saveData();
-            renderRecordsTable();
 
-            alert('每日保養與清點表單已成功送出！');
-            this.reset();
-            
-            // ⭐ 強制清除可能殘留的 Modal 遮罩與解鎖畫面凍結
-            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
+            // 採用 try...catch...finally 防呆結構
+            try {
+                // 等待同步至雲端試算表
+                await saveData();
+                alert('每日保養與清點表單已成功送出！');
+            } catch (err) {
+                console.error("同步至雲端失敗:", err);
+                alert('已先儲存於本機，但雲端同步失敗，請檢查網路連線。');
+            } finally {
+                // ⭐【關鍵修復】無論同步成功或失敗，此區塊一定會執行，徹底解決畫面反黑凍結！
+                this.reset();
 
-            document.getElementById('checkDate').value = new Date().toISOString().split('T')[0];
-            document.getElementById('vehicleInfoDisplay').innerHTML = '<div><i class="fa-solid fa-car me-2"></i>車牌號碼：<span id="displayPlate" class="fw-bold text-dark">請先選擇車輛</span></div>';
-            document.getElementById('vehicleImageCardContainer').classList.add('d-none');
-            document.getElementById('equipmentSectionsContainer').innerHTML = '';
-            renderBasicChecks('water');
+                // 1. 強制移除所有殘留的 Bootstrap Modal 半透明遮罩
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
 
-            document.getElementById('records-tab').click();
+                // 2. 解鎖 body 捲軸狀態
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+
+                // 3. 重置表單與切換分頁
+                document.getElementById('checkDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('vehicleInfoDisplay').innerHTML = '<div><i class="fa-solid fa-car me-2"></i>車牌號碼：<span id="displayPlate" class="fw-bold text-dark">請先選擇車輛</span></div>';
+                document.getElementById('vehicleImageCardContainer').classList.add('d-none');
+                document.getElementById('equipmentSectionsContainer').innerHTML = '';
+                renderBasicChecks('water');
+
+                // 4. 更新歷史紀錄表並自動切換分頁
+                renderRecordsTable();
+                document.getElementById('records-tab').click();
+            }
         });
 
         function renderRecordsTable() {

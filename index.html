@@ -486,9 +486,64 @@
             { title: "隊員", number: "18", name: "王志豪", role: "inspector" }
         ];
 
-        let vehicles = JSON.parse(localStorage.getItem('fire_vehicles')) || defaultVehicles;
-        let staffList = JSON.parse(localStorage.getItem('fire_staff')) || defaultStaff;
-        let records = JSON.parse(localStorage.getItem('fire_records')) || [];
+        const GAS_WEB_APP_URL = https://script.google.com/macros/s/AKfycbydb5_CqLm4Jxi_WZZU7X4qwQSdLZFiC1n6FA8G-jsT_EgYl9V2Uze6MnNhUJ8adnxT/exec; // ⬅️ 貼上您的 Google Apps Script 網址
+
+let vehicles = defaultVehicles;
+let staffList = defaultStaff;
+let records = [];
+
+// 從雲端載入資料
+async function loadDataFromCloud() {
+    try {
+        let response = await fetch(`${GAS_WEB_APP_URL}?action=getData`);
+        let result = await response.json();
+        
+        if (result.vehicles && result.vehicles.length > 0) {
+            vehicles = result.vehicles;
+        }
+        if (result.staff && result.staff.length > 0) {
+            staffList = result.staff;
+        }
+        if (result.records) {
+            records = result.records;
+        }
+    } catch (e) {
+        console.error("載入雲端資料失敗，改用預設或暫存", e);
+    }
+    
+    // 初始化畫面
+    initSelectors();
+    renderBasicChecks('water');
+    renderRecordsTable();
+    renderAdminVehicles();
+    renderAdminStaff();
+}
+
+// 儲存資料到雲端（同步寫入 Google 試算表）
+async function saveData() {
+    try {
+        await fetch(GAS_WEB_APP_URL, {
+            method: "POST",
+            body: JSON.stringify({
+                type: "saveAll",
+                vehicles: vehicles,
+                staff: staffList,
+                records: records
+            })
+        });
+    } catch (e) {
+        console.error("同步至雲端失敗", e);
+        alert("網路異常，雲端同步失敗！");
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('checkDate').value = today;
+
+    // 顯示讀取中並從雲端抓取資料
+    await loadDataFromCloud();
+});
 
         function saveData() {
             localStorage.setItem('fire_vehicles', JSON.stringify(vehicles));
@@ -749,6 +804,13 @@
 
             alert('每日保養與清點表單已成功送出！');
             this.reset();
+            
+            // ⭐ 強制清除可能殘留的 Modal 遮罩與解鎖畫面凍結
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+
             document.getElementById('checkDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('vehicleInfoDisplay').innerHTML = '<div><i class="fa-solid fa-car me-2"></i>車牌號碼：<span id="displayPlate" class="fw-bold text-dark">請先選擇車輛</span></div>';
             document.getElementById('vehicleImageCardContainer').classList.add('d-none');

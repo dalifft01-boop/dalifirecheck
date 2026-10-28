@@ -132,7 +132,7 @@
                     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <span><i class="fa-solid fa-shield-halved me-2"></i>歷史紀錄與主管簽核管理</span>
                         
-                        <!-- 藍框區域：新增名稱/車牌篩選選單 -->
+                        <!-- 藍框區域：車輛篩選選單 -->
                         <div class="d-flex gap-2 align-items-center flex-wrap">
                             <select id="filterVehicle" class="form-select form-select-sm" style="width: auto;" onchange="handleFilterChange()">
                                 <option value="all">全部車輛 (名稱/車牌)</option>
@@ -158,7 +158,7 @@
                                         <th>車輛名稱</th>
                                         <th>車牌號碼</th>
                                         <th>檢查人員</th>
-                                        <th>簽核狀態</th>
+                                        <th>簽核狀態 / 提醒</th>
                                         <th>簽核主管</th>
                                         <th class="text-end">操作</th>
                                     </tr>
@@ -496,7 +496,6 @@
             }
         ];
 
-        // 全域監聽：確保任何 Bootstrap Modal 關閉時，絕對會清除反黑遮罩與解鎖畫面
         document.addEventListener('hidden.bs.modal', function (event) {
             document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
             document.body.classList.remove('modal-open');
@@ -517,11 +516,9 @@
         let staffList = defaultStaff;
         let records = [];
 
-        // 分頁相關全域變數 (控制每頁 10 筆)
         const PAGE_SIZE = 10;
         let currentPage = 1;
 
-        // ⭐ 日期與時間格式化工具 (轉換 UTC ISO 字串至台灣本地時間 YYYY-MM-DD 與 YYYY-MM-DD HH:mm)
         function formatDateStandard(dateStr) {
             if (!dateStr) return '';
             if (typeof dateStr === 'string' && dateStr.includes('T')) {
@@ -552,7 +549,6 @@
             return String(dateStr);
         }
 
-        // 驗證管理者權限
         function checkAdminPermission() {
             const ADMIN_PASSWORD = "admin"; 
             let password = prompt("【安全防護】此為後台管理與系統設定，請輸入管理者密碼：");
@@ -565,7 +561,6 @@
             }
         }
         
-        // 點擊標題回到初始首頁
         function goToHome() {
             const formTab = document.getElementById('form-tab');
             if (formTab) {
@@ -587,7 +582,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
-        // 從雲端載入資料
         async function loadDataFromCloud() {
             try {
                 let response = await fetch(`${GAS_WEB_APP_URL}?action=getData`);
@@ -613,7 +607,6 @@
             renderAdminStaff();
         }
 
-        // 儲存資料到雲端
         async function saveData() {
             try {
                 await fetch(GAS_WEB_APP_URL, {
@@ -645,7 +638,6 @@
                 vehSelect.innerHTML += `<option value="${idx}">${v.name} (${v.plate})</option>`;
             });
 
-            // 初始化藍框處：車輛 (名稱/車牌) 篩選選單
             const filterVehSelect = document.getElementById('filterVehicle');
             filterVehSelect.innerHTML = '<option value="all">全部車輛 (名稱/車牌)</option>';
             vehicles.forEach((v) => {
@@ -755,14 +747,14 @@
                                         <div class="col-md-3">
                                             <div class="input-group input-group-sm">
                                                 <span class="input-group-text">氣量</span>
-                                                <input type="number" class="form-control scba-bar" placeholder="例如: 300" required>
+                                                <input type="number" class="form-control scba-bar" placeholder="例如: 300" max="320" required>
                                                 <span class="input-group-text">bar</span>
                                             </div>
                                         </div>
                                         <div class="col-md-3">
                                             <div class="input-group input-group-sm">
                                                 <span class="input-group-text">電量</span>
-                                                <input type="number" class="form-control scba-bat" placeholder="例如: 100" required>
+                                                <input type="number" class="form-control scba-bat" placeholder="例如: 100" max="100" min="0" required>
                                                 <span class="input-group-text">%</span>
                                             </div>
                                         </div>
@@ -818,6 +810,23 @@
 
             if (vehIdx === "" || !inspector || !date) {
                 alert('請完整填寫日期、車輛與檢查人員！');
+                return;
+            }
+
+            // 🛑 驗證：氣瓶壓力不得大於 320 bar
+            let isValid = true;
+            let errorMessage = "";
+            document.querySelectorAll('.scba-item-block').forEach(el => {
+                const barVal = parseFloat(el.querySelector('.scba-bar').value);
+                const itemName = el.getAttribute('data-eq-name');
+                if (barVal > 320) {
+                    isValid = false;
+                    errorMessage = `【數值錯誤】${itemName} 的氣瓶壓力為 ${barVal} bar，不得大於 320 bar！`;
+                }
+            });
+
+            if (!isValid) {
+                alert(errorMessage);
                 return;
             }
 
@@ -908,20 +917,18 @@
             }
         });
 
-        // 當使用者切換車輛或簽核狀態篩選時
         function handleFilterChange() {
-            currentPage = 1; // 重新篩選時返回第一頁
+            currentPage = 1;
             renderRecordsTable();
         }
 
-        // 渲染歷史紀錄表格（包含篩選與 10 筆分頁功能，並自動修復時間顯示）
+        // 渲染歷史紀錄表格（包含氣瓶壓力 < 260 bar 顯示需灌氣、電量 < 85% 顯示需充電）
         function renderRecordsTable() {
             const tbody = document.getElementById('recordsTableBody');
             const statusFilter = document.getElementById('filterSignStatus').value;
             const vehicleFilter = document.getElementById('filterVehicle').value;
             tbody.innerHTML = '';
 
-            // 1. 執行條件過濾
             let filtered = records.filter(r => {
                 if (statusFilter === 'unsigned' && r.signed) return false;
                 if (statusFilter === 'signed' && !r.signed) return false;
@@ -941,7 +948,6 @@
                 return;
             }
 
-            // 2. 計算 10 筆/頁的分頁數據
             const totalItems = filtered.length;
             const totalPages = Math.ceil(totalItems / PAGE_SIZE);
             if (currentPage > totalPages) currentPage = totalPages;
@@ -951,16 +957,33 @@
             const endIndex = Math.min(startIndex + PAGE_SIZE, totalItems);
             const pageData = filtered.slice(startIndex, endIndex);
 
-            // 3. 渲染該頁的 10 筆資料
             pageData.forEach(rec => {
                 let signBadge = rec.signed 
                     ? `<span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i>已簽核</span>` 
                     : `<span class="badge bg-danger text-white"><i class="fa-solid fa-triangle-exclamation me-1"></i>未簽核</span>`;
                 
-                // ⭐ 格式化日期與主管簽核時間
+                // 🔔 智慧檢查：氣瓶壓力與電量狀態
+                let needsRefill = false;
+                let needsCharge = false;
+                if (rec.items) {
+                    rec.items.forEach(it => {
+                        if (it.isScba) {
+                            if (parseFloat(it.bar) < 260) needsRefill = true;
+                            if (parseFloat(it.battery) < 85) needsCharge = true;
+                        }
+                    });
+                }
+
+                let warningBadges = "";
+                if (needsRefill) {
+                    warningBadges += `<span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-fire-extinguisher me-1"></i>需灌氣</span>`;
+                }
+                if (needsCharge) {
+                    warningBadges += `<span class="badge bg-info text-dark ms-1"><i class="fa-solid fa-bolt me-1"></i>需充電</span>`;
+                }
+
                 let displayDate = formatDateStandard(rec.date);
                 let displaySignTime = formatDateTimeStandard(rec.signTime);
-
                 let supText = rec.signed ? `${rec.supervisor} <br><small class="text-muted">${displaySignTime}</small>` : `<span class="text-muted">-</span>`;
 
                 tbody.innerHTML += `
@@ -969,7 +992,7 @@
                         <td class="fw-bold">${rec.vehicleName}</td>
                         <td><span class="badge bg-secondary">${rec.vehiclePlate}</span></td>
                         <td>${rec.inspector}</td>
-                        <td>${signBadge}</td>
+                        <td>${signBadge} ${warningBadges}</td>
                         <td>${supText}</td>
                         <td class="text-end">
                             <button class="btn btn-sm btn-outline-primary me-1" onclick="viewDetail(${rec.id})"><i class="fa-solid fa-eye"></i> 檢視/簽核</button>
@@ -980,26 +1003,22 @@
                 `;
             });
 
-            // 4. 更新紅框底部的分頁 UI 資訊
             document.getElementById('paginationInfo').textContent = `顯示第 ${startIndex + 1} 至 ${endIndex} 筆，共 ${totalItems} 筆紀錄`;
             renderPaginationUI(totalPages);
         }
 
-        // 動態渲染分頁按鈕 UI
         function renderPaginationUI(totalPages) {
             const paginationEl = document.getElementById('paginationControls');
             paginationEl.innerHTML = '';
 
             if (totalPages <= 1) return;
 
-            // 上一頁
             paginationEl.innerHTML += `
                 <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                     <button class="page-link" onclick="changePage(${currentPage - 1})">上一頁</button>
                 </li>
             `;
 
-            // 數字頁碼
             for (let i = 1; i <= totalPages; i++) {
                 paginationEl.innerHTML += `
                     <li class="page-item ${currentPage === i ? 'active' : ''}">
@@ -1008,7 +1027,6 @@
                 `;
             }
 
-            // 下一頁
             paginationEl.innerHTML += `
                 <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
                     <button class="page-link" onclick="changePage(${currentPage + 1})">下一頁</button>
@@ -1016,7 +1034,6 @@
             `;
         }
 
-        // 換頁觸發函式
         function changePage(targetPage) {
             currentPage = targetPage;
             renderRecordsTable();
@@ -1133,10 +1150,6 @@
                 rec.basicDataList.forEach(b => {
                     basicHtml += `<div class="col-md-4"><span class="fw-bold">${b.label}：</span> <span class="badge bg-${b.val === '正常' ? 'success' : 'danger'}">${b.val}</span></div>`;
                 });
-            } else if (rec.basicData) {
-                basicHtml += `<div class="col-md-4"><span class="fw-bold">車輛油量(>1/2)：</span> <span class="badge bg-${rec.basicData.oil === '正常' ? 'success' : 'danger'}">${rec.basicData.oil}</span></div>`;
-                basicHtml += `<div class="col-md-4"><span class="fw-bold">水箱滿水：</span> <span class="badge bg-${rec.basicData.water === '正常' ? 'success' : 'danger'}">${rec.basicData.water}</span></div>`;
-                basicHtml += `<div class="col-md-4"><span class="fw-bold">幫浦性能：</span> <span class="badge bg-${rec.basicData.pump === '正常' ? 'success' : 'danger'}">${rec.basicData.pump}</span></div>`;
             }
             basicHtml += `</div>`;
 
@@ -1148,7 +1161,24 @@
 
             rec.items.forEach(it => {
                 let statusBadge = `<span class="badge bg-${it.status === '正常' ? 'success' : (it.status === '異常' ? 'danger' : 'warning')}">${it.status}</span>`;
-                let detailExtra = it.isScba ? `<br><small class="text-primary">氣量: <b>${it.bar} bar</b> | 電量: <b>${it.battery}%</b></small>` : '';
+                
+                let detailExtra = '';
+                if (it.isScba) {
+                    let scbaWarnings = '';
+                    const barVal = parseFloat(it.bar);
+                    const batVal = parseFloat(it.battery);
+
+                    // ⭐ 檢視單項詳細內容時判定氣量與電量
+                    if (!isNaN(barVal) && barVal < 260) {
+                        scbaWarnings += ` <span class="badge bg-warning text-dark me-1"><i class="fa-solid fa-fire-extinguisher me-1"></i>需灌氣</span>`;
+                    }
+                    if (!isNaN(batVal) && batVal < 85) {
+                        scbaWarnings += ` <span class="badge bg-info text-dark me-1"><i class="fa-solid fa-bolt me-1"></i>需充電</span>`;
+                    }
+
+                    detailExtra = `<br><small class="text-primary">氣量: <b>${it.bar} bar</b> | 電量: <b>${it.battery}%</b></small>${scbaWarnings}`;
+                }
+
                 itemsHtml += `
                     <tr>
                         <td><span class="badge bg-secondary">${it.position}</span></td>
@@ -1292,8 +1322,6 @@
             dlAnchor.click();
             dlAnchor.remove();
         }
-
-        // ================= 後台管理功能 =================
 
         function renderAdminVehicles() {
             const listContainer = document.getElementById('adminVehicleList');

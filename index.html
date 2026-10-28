@@ -1090,7 +1090,13 @@ document.addEventListener('hidden.bs.modal', function (event) {
                 rec.signed = true;
                 rec.supervisor = selectVal;
                 const now = new Date();
-                rec.signTime = now.toISOString().replace('T', ' ').substring(0, 16);
+                // 轉換為台灣本地時間格式 (YYYY-MM-DD HH:mm)
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                rec.signTime = `${year}-${month}-${day} ${hours}:${minutes}`;
                 saveData();
                 renderRecordsTable();
                 

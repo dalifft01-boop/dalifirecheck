@@ -30,11 +30,11 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#"><i class="fa-solid fa-truck-fast me-2 text-warning"></i>每日車輛保養與器材清點系統</a>
+            <a class="navbar-brand" href="javascript:void(0);" onclick="goToHome()" style="cursor: pointer;"><i class="fa-solid fa-truck-fast me-2 text-warning"></i>每日車輛保養與器材清點系統</a>
             <div class="d-flex">
-                <button class="btn btn-outline-light btn-sm me-2 no-print" data-bs-toggle="modal" data-bs-target="#settingsModal">
-                    <i class="fa-solid fa-gear me-1"></i>後台管理 / 系統設定
-                </button>
+                <button class="btn btn-outline-light btn-sm me-2 no-print" onclick="checkAdminPermission()">
+                   <i class="fa-solid fa-gear me-1"></i>後台管理 / 系統設定
+               </button>
             </div>
         </div>
     </nav>
@@ -500,6 +500,52 @@ document.addEventListener('hidden.bs.modal', function (event) {
         let staffList = defaultStaff;
         let records = [];
 
+        // 驗證管理者權限
+      function checkAdminPermission() {
+      // 這裡直接設定管理者密碼（請將 admin 改為您要的密碼）
+      const ADMIN_PASSWORD = "admin"; 
+    
+      let password = prompt("【安全防護】此為後台管理與系統設定，請輸入管理者密碼：");
+    
+      if (password === null) return;
+    
+      if (password === ADMIN_PASSWORD) {
+        const settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+        settingsModal.show();
+    } else {
+        alert("密碼錯誤！您沒有權限存取後台管理系統。");
+    }
+}
+        
+        // 點擊標題回到初始首頁
+function goToHome() {
+    // 1. 強制切換回「每日填報表單」分頁
+    const formTab = document.getElementById('form-tab');
+    if (formTab) {
+        const tab = new bootstrap.Tab(formTab);
+        tab.show();
+    }
+
+    // 2. 重置填報表單
+    const form = document.getElementById('dailyCheckForm');
+    if (form) form.reset();
+
+    // 3. 恢復日期為今天
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('checkDate').value = today;
+
+    // 4. 清空車輛相關動態顯示
+    document.getElementById('vehicleInfoDisplay').innerHTML = '<div><i class="fa-solid fa-car me-2"></i>車牌號碼：<span id="displayPlate" class="fw-bold text-dark">請先選擇車輛</span></div>';
+    document.getElementById('vehicleImageCardContainer').classList.add('d-none');
+    document.getElementById('equipmentSectionsContainer').innerHTML = '';
+    
+    // 5. 恢復預設基礎檢查項目
+    renderBasicChecks('water');
+    
+    // 6. 畫面滾動到最上方（支援手機與電腦）
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+        
         // 從雲端載入資料
         async function loadDataFromCloud() {
             try {

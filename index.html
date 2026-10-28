@@ -1163,7 +1163,11 @@ document.addEventListener('hidden.bs.modal', function (event) {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
             const dlAnchor = document.createElement('a');
             dlAnchor.setAttribute("href", dataStr);
-            dlAnchor.setAttribute("download", `vehicle_check_records_${new Date().toISOString().split('T')[0]}.json`);
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            dlAnchor.setAttribute("download", `vehicle_check_records_${year}-${month}-${day}.json`);
             document.body.appendChild(dlAnchor);
             dlAnchor.click();
             dlAnchor.remove();

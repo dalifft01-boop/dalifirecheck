@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>每日車輛保養與器材清點系統</title>
+    <title>每日車輛保養與器材清單系統</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome 6 -->
@@ -30,7 +30,7 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container-fluid">
-            <a class="navbar-brand" href="javascript:void(0);" onclick="goToHome()" style="cursor: pointer;"><i class="fa-solid fa-truck-fast me-2 text-warning"></i>每日車輛保養與器材清點系統</a>
+            <a class="navbar-brand" href="javascript:void(0);" onclick="goToHome()" style="cursor: pointer;"><i class="fa-solid fa-truck-fast me-2 text-warning"></i>每日車輛保養與器材清單系統</a>
             <div class="d-flex">
                 <button class="btn btn-outline-light btn-sm me-2 no-print" onclick="checkAdminPermission()">
                    <i class="fa-solid fa-gear me-1"></i>後台管理 / 系統設定
@@ -58,6 +58,15 @@
             <div class="tab-pane fade show active" id="form-pane" role="tabpanel">
                 <form id="dailyCheckForm" class="needs-validation" novalidate>
                     
+                    <!-- 重複填寫警告 Banner -->
+                    <div class="alert alert-danger d-none align-items-center mb-3 shadow-sm" id="duplicateWarningAlert" role="alert">
+                        <i class="fa-solid fa-triangle-exclamation fa-2x me-3"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">警告：該車輛於選定日期已有點檢紀錄！</h6>
+                            <span id="duplicateWarningText" class="small">為避免資料重複覆蓋，請勿重複提交。如有需要修改，請至「歷史紀錄」進行檢視或編輯。</span>
+                        </div>
+                    </div>
+
                     <!-- 基本資訊卡片 -->
                     <div class="card">
                         <div class="card-header bg-primary text-white"><i class="fa-solid fa-info-circle me-2"></i>基本資料填寫</div>
@@ -65,7 +74,7 @@
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label for="checkDate" class="form-label fw-bold">填寫日期</label>
-                                    <input type="date" class="form-control" id="checkDate" required>
+                                    <input type="date" class="form-control" id="checkDate" required onchange="checkDuplicateRecord()">
                                 </div>
                                 <div class="col-md-4">
                                     <label for="selectVehicle" class="form-label fw-bold">選擇車輛</label>
@@ -120,7 +129,7 @@
 
                     <!-- 提交按鈕 -->
                     <div class="text-center mb-5 no-print">
-                        <button type="submit" class="btn btn-primary btn-lg px-5 py-3 shadow"><i class="fa-solid fa-paper-plane me-2"></i>送出每日保養與清點紀錄</button>
+                        <button type="submit" id="submitFormBtn" class="btn btn-primary btn-lg px-5 py-3 shadow"><i class="fa-solid fa-paper-plane me-2"></i>送出每日保養與清點紀錄</button>
                     </div>
 
                 </form>
@@ -579,6 +588,7 @@
             document.getElementById('equipmentSectionsContainer').innerHTML = '';
             
             renderBasicChecks('water');
+            checkDuplicateRecord(); // 歸位時同步驗證重複
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
@@ -687,6 +697,41 @@
             });
         }
 
+        // 🛑 重複填寫檢查函式
+        function checkDuplicateRecord() {
+            const vehIdx = document.getElementById('selectVehicle').value;
+            const dateVal = document.getElementById('checkDate').value;
+            const warningAlert = document.getElementById('duplicateWarningAlert');
+            const submitBtn = document.getElementById('submitFormBtn');
+
+            if (vehIdx === "" || !dateVal) {
+                warningAlert.classList.add('d-none');
+                warningAlert.classList.remove('d-flex');
+                submitBtn.disabled = false;
+                return false;
+            }
+
+            const vehicle = vehicles[vehIdx];
+            const formattedDate = formatDateStandard(dateVal);
+
+            // 尋找當天是否有同車牌紀錄
+            const existingRecord = records.find(r => formatDateStandard(r.date) === formattedDate && r.vehiclePlate === vehicle.plate);
+
+            if (existingRecord) {
+                warningAlert.classList.remove('d-none');
+                warningAlert.classList.add('d-flex');
+                document.getElementById('duplicateWarningText').innerHTML = `車輛 <strong>${vehicle.name} (${vehicle.plate})</strong> 於日期 <strong>${formattedDate}</strong> 已有由【${existingRecord.inspector}】填寫之紀錄！請勿重複送出。`;
+                
+                submitBtn.disabled = true; // 鎖定送出按鈕
+                return true;
+            } else {
+                warningAlert.classList.add('d-none');
+                warningAlert.classList.remove('d-flex');
+                submitBtn.disabled = false; // 解鎖送出按鈕
+                return false;
+            }
+        }
+
         function onVehicleChange() {
             const idx = document.getElementById('selectVehicle').value;
             const container = document.getElementById('equipmentSectionsContainer');
@@ -699,6 +744,7 @@
                 container.innerHTML = "";
                 imgCardContainer.classList.add('d-none');
                 renderBasicChecks('water');
+                checkDuplicateRecord();
                 return;
             }
 
@@ -800,6 +846,9 @@
                 cardHtml += `</div></div></div>`;
                 container.innerHTML += cardHtml;
             }
+
+            // 選擇車輛後觸發重複紀錄檢查
+            checkDuplicateRecord();
         }
 
         document.getElementById('dailyCheckForm').addEventListener('submit', async function(e) {
@@ -813,7 +862,52 @@
                 return;
             }
 
-            // 🛑 驗證：氣瓶壓力不得大於 320 bar
+            // 🛑 防護 1：再次檢查當天是否重複填寫
+            if (checkDuplicateRecord()) {
+                alert('警告：該車輛於選定日期已有紀錄，無法重複送出表單！');
+                return;
+            }
+
+            // 🛑 防護 2：檢查所有氣瓶的「氣量」與「電量」數值是否填寫
+            let isNumericValid = true;
+            let firstEmptyInput = null;
+            let numericErrorMessage = "";
+
+            document.querySelectorAll('.scba-item-block').forEach(el => {
+                const barInput = el.querySelector('.scba-bar');
+                const batInput = el.querySelector('.scba-bat');
+                const itemName = el.getAttribute('data-eq-name');
+
+                // 恢復預設外框
+                barInput.style.border = '';
+                batInput.style.border = '';
+
+                // 檢查氣量是否為空
+                if (barInput.value === "" || barInput.value === null) {
+                    isNumericValid = false;
+                    barInput.style.border = '2px solid red';
+                    if (!firstEmptyInput) firstEmptyInput = barInput;
+                    numericErrorMessage = `【欄位未填】${itemName} 的「氣量」尚未填寫！`;
+                }
+                // 檢查電量是否為空
+                else if (batInput.value === "" || batInput.value === null) {
+                    isNumericValid = false;
+                    batInput.style.border = '2px solid red';
+                    if (!firstEmptyInput) firstEmptyInput = batInput;
+                    numericErrorMessage = `【欄位未填】${itemName} 的「電量」尚未填寫！`;
+                }
+            });
+
+            if (!isNumericValid) {
+                alert(numericErrorMessage);
+                if (firstEmptyInput) {
+                    firstEmptyInput.focus();
+                    firstEmptyInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return;
+            }
+
+            // 🛑 防護 3：氣瓶壓力不得大於 320 bar
             let isValid = true;
             let errorMessage = "";
             document.querySelectorAll('.scba-item-block').forEach(el => {
@@ -910,6 +1004,7 @@
                 document.getElementById('vehicleImageCardContainer').classList.add('d-none');
                 document.getElementById('equipmentSectionsContainer').innerHTML = '';
                 renderBasicChecks('water');
+                checkDuplicateRecord();
 
                 currentPage = 1;
                 renderRecordsTable();
@@ -1131,6 +1226,7 @@
                 records = records.filter(r => r.id !== id);
                 saveData();
                 renderRecordsTable();
+                checkDuplicateRecord(); // 刪除紀錄後重新檢查驗證狀態
                 const detailModalEl = document.getElementById('detailModal');
                 const modalInstance = bootstrap.Modal.getInstance(detailModalEl);
                 if (modalInstance) {
@@ -1168,7 +1264,6 @@
                     const barVal = parseFloat(it.bar);
                     const batVal = parseFloat(it.battery);
 
-                    // ⭐ 檢視單項詳細內容時判定氣量與電量
                     if (!isNaN(barVal) && barVal < 260) {
                         scbaWarnings += ` <span class="badge bg-warning text-dark me-1"><i class="fa-solid fa-fire-extinguisher me-1"></i>需灌氣</span>`;
                     }
